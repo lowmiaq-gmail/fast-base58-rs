@@ -1,14 +1,14 @@
 [package]
-name = "fast-rfc3339-validator-rs"
+name = "fast-base58-rs"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.74"
 license = "MIT"
-description = "Rust implementation of the rfc3339-validator 0.1.4 contract"
-repository = "https://github.com/lowmiaq-gmail/fast-rfc3339-validator-rs"
-homepage = "https://github.com/lowmiaq-gmail/fast-rfc3339-validator-rs"
-keywords = ["rfc3339", "validation", "python", "pyo3", "datetime"]
-categories = ["date-and-time", "parsing"]
+description = "Rust-backed drop-in replacement for base58 2.1.1"
+repository = "https://github.com/lowmiaq-gmail/fast-base58-rs"
+homepage = "https://github.com/lowmiaq-gmail/fast-base58-rs"
+keywords = ["base58", "encoding", "bitcoin", "python", "pyo3"]
+categories = ["encoding", "cryptography::cryptocurrencies"]
 
 [lib]
 name = "_native"
@@ -16,6 +16,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = { version = "0.24", features = ["extension-module", "abi3-py38"] }
+sha2 = "0.10"
 
 [profile.release]
 codegen-units = 1
