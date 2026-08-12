@@ -326,7 +326,7 @@ jobs:
       - name: Prove automatic universal-wheel selection
         run: |
           python -c "import pkg_resources, base58 as m; d=pkg_resources.get_distribution('fast-base58-rs'); assert d.version == '0.1.0'; assert m.__file__.endswith(('.py','.pyc')), m.__file__; assert m.b58encode(b'hello world') == b'StV1DL6CwTryKyV'"
-          python -m pip install "pytest==4.6.11" "PyHamcrest>=2.0.2"
+          python -m pip install "pytest==4.6.11" "PyHamcrest>=2.0.2" "pytest-benchmark==4.0.0"
           PYTHON=python bash scripts/run_upstream_full.sh
           python -m venv oracle-venv
           python scripts/run_differential.py --oracle-python oracle-venv/bin/python --candidate-python "$(python -c 'import sys; print(sys.executable)')"

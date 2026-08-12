@@ -38,7 +38,7 @@ fn build_decode_map(alphabet: &[u8], autofix: bool) -> HashMap<u8, u8> {
         invmap.insert(ch, index as u8);
     }
     if autofix {
-        let groups: [[u8; 3]; 2] = [[b'0', b'O', b'o'], [b'I', b'l', b'1']];
+        let groups: [[u8; 3]; 2] = [*b"0Oo", *b"Il1"];
         for group in &groups {
             let pivots: Vec<u8> = group
                 .iter()
