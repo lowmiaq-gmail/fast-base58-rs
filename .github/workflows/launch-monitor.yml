@@ -1,0 +1,35 @@
+name: Launch monitoring
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  public-contract:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Verify GitHub Release and PyPI files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import json, subprocess, urllib.request
+          release = json.loads(subprocess.check_output(["gh","api","repos/lowmiaq-gmail/fast-rfc3339-validator-rs/releases/latest"]))
+          assert not release["draft"] and not release["prerelease"]
+          assert release["tag_name"] == "v0.1.0"
+          with urllib.request.urlopen("https://pypi.org/pypi/fast-rfc3339-validator-rs/0.1.0/json") as response:
+              pypi = json.load(response)
+          assert len(pypi["urls"]) == 7, [item["filename"] for item in pypi["urls"]]
+          assert len(release["assets"]) == 10, [item["name"] for item in release["assets"]]
+          asset_names = {item["name"] for item in release["assets"]}
+          assert {"release-benchmark.json", "release-benchmark.md", "SHA256SUMS"} <= asset_names
+          print("launch monitoring: PASS")
+          PY
