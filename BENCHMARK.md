@@ -12,12 +12,12 @@ sizes, interpreter string and artifact import path. Reproduce with:
 
 | Operation | Payload | Oracle median ns | Candidate median ns | Median ratio |
 |---|---:|---:|---:|---:|
-| encode | 16 bytes | 8,205.12 | 2,008.83 | 4.08x |
-| encode | 32 bytes | 17,536.50 | 4,743.22 | 3.70x |
-| encode | 64 bytes | 42,331.32 | 15,535.93 | 2.72x |
-| decode | 16 bytes | 6,186.61 | 8,883.17 | 0.70x |
-| decode | 32 bytes | 9,459.19 | 8,755.13 | 1.08x |
-| decode | 64 bytes | 20,009.68 | 16,510.14 | 1.21x |
+| encode | 16 bytes | 12,305.60 | 1,941.88 | 6.34x |
+| encode | 32 bytes | 16,528.11 | 4,345.92 | 3.80x |
+| encode | 64 bytes | 35,536.84 | 12,758.81 | 2.79x |
+| decode | 16 bytes | 4,459.80 | 5,293.92 | 0.84x |
+| decode | 32 bytes | 8,528.79 | 8,202.86 | 1.04x |
+| decode | 64 bytes | 18,543.08 | 13,869.84 | 1.34x |
 
 The encode fast path was faster for all three measured sizes. Decode was faster
 for 32-byte and 64-byte payloads but slower for the 16-byte payload, so this
