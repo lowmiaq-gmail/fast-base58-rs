@@ -94,7 +94,7 @@ jobs:
           path: dist
       - name: Install the prebuilt universal fallback
         run: |
-          python -m pip install "pip<24" "pytest==4.6.11" "PyHamcrest>=2.0.2" "pytest-benchmark==4.0.0"
+          python -m pip install "pip<24" "pytest==7.4.4" "PyHamcrest>=2.0.2" "pytest-benchmark==4.0.0"
           python -m pip install --force-reinstall --no-deps dist/*-py3-none-any.whl
       - name: Verify fallback ownership and semantics
         run: python -c "import base58 as m; assert m.__file__.endswith('.py'), m.__file__; assert m.b58encode(b'hello world') == b'StV1DL6CwTryKyV'"
