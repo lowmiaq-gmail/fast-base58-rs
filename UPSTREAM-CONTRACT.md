@@ -4,46 +4,78 @@
 
 | Field | Frozen value |
 |---|---|
-| Distribution | `rfc3339-validator` |
-| Import module | `rfc3339_validator` |
-| Version | `0.1.4` |
-| Repository | <https://github.com/naimetti/rfc3339-validator> |
-| Tag / commit | `v0.1.4` / `5ebeb83a83ae5a65e610ffd90de36d30d7161aec` |
-| License | MIT; local `LICENSE` SHA256 `5ba1a4f03626ccca6dcbf53a554545e4f776a335bfdaa233ec3bfe9bb7fac15d` |
-| Runtime dependency | `six` |
-| Python | `>=2.7`, excluding `3.0.*` through `3.4.*` |
-| sdist | `rfc3339_validator-0.1.4.tar.gz`, SHA256 `138a2abdf93304ad60530167e51d2dfb9549521a836871b88d7f4695d0022f6b` |
-| wheel | `rfc3339_validator-0.1.4-py2.py3-none-any.whl`, SHA256 `24f6ec1eda14ef823da9e36ec7113124b39c04d50a4d3d3a3c2859577e7791fa` |
+| Distribution | `base58` |
+| Import module | `base58` |
+| Version | `2.1.1` |
+| Repository | <https://github.com/keis/base58> |
+| Tag / commit | `v2.1.1` / `11c293f4479fafffbc7b766fcb703a835c02dccd` |
+| License | MIT; upstream `COPYING` SHA256 `2cc1a54227464813f4e149123c2323071009957586f89aca1cc80a9a04d34933` |
+| Runtime dependency | none (stdlib only) |
+| Python | `>=3.7` |
+| sdist | `base58-2.1.1.tar.gz`, SHA256 `c5d0cb3f5b6e81e8e35da5754388ddcc6d0d14b6c6a132cb93d69ed580a7278c` |
+| wheel | `base58-2.1.1-py3-none-any.whl`, SHA256 `11a36f4d3ce51dfc1043f3218591ac4eb1ceb172919cebe05b52a5bcc8d245c2` |
 
 Frozen local files:
 
-- `upstream/oracle/rfc3339_validator.py`: SHA256 `c220cb9495da5215a53ab173f695060294df2d1042a9cbaaf0cc622bcba09d6e`
-- `upstream/tests/test_rfc3339_validator.py`: SHA256 `478b821ea00f3b940e9d6ed77a7a831cf8a56e89b4712e289a5692ab62a39c13`
+- `upstream/base58/__init__.py`: upstream implementation
+- `upstream/base58/__main__.py`: upstream CLI entry point
+- `upstream/base58/py.typed`: upstream marker
+- `upstream/test_base58.py`: upstream test suite
+- `upstream/test_base45.py`: upstream arbitrary-alphabet test suite
 
 ## Public and observable surface
 
-- `validate_rfc3339(date_string)` with signature `(date_string)` and `bool` result for string inputs.
-- `__author__`, `__email__`, `__version__`.
-- `RFC3339_REGEX_FLAGS`: Python 3 value is `re.ASCII`; its runtime type must match the Oracle. Python 2 value is integer `0`.
-- `RFC3339_REGEX`: `re.Pattern` on supported Python 3 runtimes; `.pattern` and `.flags` must equal the Oracle. `re.VERBOSE` is used only in its compiled flags and is not part of `RFC3339_REGEX_FLAGS`.
-- Imported module attributes `calendar`, `re`, and `six` remain visible and identify the same imported module objects.
-- No console script is provided. There is no package `__main__` API; executing the single module with `python -m rfc3339_validator` has no output or command behavior.
+### Module-level constants
+- `__version__`: `'2.1.1'`
+- `BITCOIN_ALPHABET`: `b'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'` (58 chars)
+- `RIPPLE_ALPHABET`: `b'rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz'` (58 chars)
+- `XRP_ALPHABET`: identity alias for `RIPPLE_ALPHABET` (same object, not just same value)
+- `alphabet`: retro-compatibility alias for `BITCOIN_ALPHABET` (same object)
+
+### Public functions (signatures exactly as upstream)
+
+- `scrub_input(v: Union[str, bytes]) -> bytes`: if str, encode to ascii bytes; return unchanged if bytes
+- `b58encode_int(i: int, default_one: bool = True, alphabet: bytes = BITCOIN_ALPHABET) -> bytes`: encode integer as base58
+- `b58encode(v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET) -> bytes`: encode string/bytes as base58
+- `_get_base58_decode_map(alphabet: bytes, autofix: bool) -> Mapping[int, int]`: build decode map (decorated with `@lru_cache()`)
+- `b58decode_int(v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET, *, autofix: bool = False) -> int`: decode base58 to integer; `autofix` is keyword-only
+- `b58decode(v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET, *, autofix: bool = False) -> bytes`: decode base58 to bytes
+- `b58encode_check(v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET) -> bytes`: encode with 4-byte checksum (double SHA256)
+- `b58decode_check(v: Union[str, bytes], alphabet: bytes = BITCOIN_ALPHABET, *, autofix: bool = False) -> bytes`: decode and verify checksum; raises `ValueError("Invalid checksum")` on mismatch
+
+### Module entry point and CLI
+
+- `python -m base58`: runs the CLI (`base58/__main__.py`)
+- Console script `base58`: entry point to `base58.__main__:main`
+- CLI supports file/stdin input with `-d`/`--decode` and `-c`/`--check` flags
+- `py.typed`: present, enables PEP 561 typing
+
+### Module docstring
+- The module has the upstream docstring: `'''Base58 encoding\n\nImplementations of Base58 and Base58Check encodings that are compatible\nwith the bitcoin network.\n'''`
 
 ## Behavioral boundaries
 
-- Exact ASCII RFC3339 shape, uppercase `T` and `Z`, optional fractional seconds, and numeric UTC offsets.
-- Calendar-valid year/month/day; year zero is rejected; leap seconds are rejected.
-- Python regex `$` accepts one trailing newline, and the replacement must preserve this edge.
-- Unicode digits are rejected under Python 3 because the regex carries `re.ASCII`.
-- Non-string inputs raise the same exception class and message as the Oracle regex on each runtime.
-- Regex globals, metadata, function signature, result type, module globals, and import/entry-point behavior are part of compatibility, not implementation details.
+- `scrub_input`: str → `v.encode('ascii')`; bytes → pass through. Raises `UnicodeEncodeError` for non-ASCII str.
+- `b58encode_int(0, default_one=True)` → `alphabet[0:1]` (single first-char byte). `b58encode_int(0, default_one=False)` → `b''`.
+- `b58encode(b'')` → `b''`. Leading null bytes become leading alphabet[0] characters.
+- `b58encode(b'\x00\x00hello world')` → `b'11StV1DL6CwTryKyV'`.
+- `b58decode('')` → `b''` (empty input after rstrip); `b58decode('1')` → `b'\x00'`.
+- `b58decode` whitespace handling: if `b' '` is NOT in alphabet, `v.rstrip()` strips trailing whitespace before decode. If `b' '` IS in alphabet (e.g. BASE45), no stripping occurs.
+- `b58decode_int` whitespace: same rstrip rule; then decode (no leading-char stripping — that's only in b58decode).
+- `b58decode_int` raises `ValueError("Invalid character {!r}".format(chr(byte)))` for bytes not in decode map. The `{!r}` produces `repr(chr(byte))` — e.g. `"Invalid character '\\\\x08'"` for backspace, `"Invalid character '0'"` for `'0'` not in bitcoin alphabet.
+- `autofix=True`: groups `[b'0Oo']` and `[b'Il1']` — if exactly one character in a group appears in the alphabet, all group members map to its index.
+- `_get_base58_decode_map` is decorated with `@lru_cache()` (maxsize=128, typed=False).
+- `b58decode_check` raises `ValueError("Invalid checksum")` on checksum mismatch.
+- `b58decode_int` autofix is keyword-only (after `*` in signature). Calling it as positional raises `TypeError`.
+- `b58decode` autofix is keyword-only. Same for `b58decode_check`.
+- Imported module attributes `functools`, `hashlib`, `typing` are observable via `from base58 import *`.
+- `XRP_ALPHABET is RIPPLE_ALPHABET` evaluates to `True`.
 
 ## Complete upstream suite
 
-The frozen suite is exactly the unmodified `upstream/tests/test_rfc3339_validator.py`:
+The frozen suites are exactly the unmodified:
 
-- `test_valid_dates` (skipped only by the upstream marker on Python 2);
-- `test_against_legacy` with `max_examples=1500`;
-- `test_with_unicode` with the upstream example and Hypothesis settings.
+- `upstream/test_base58.py`: 18 tests including parametrized alphabet round-trips, integer encoding, autofix, checksum, invalid input, random benchmark tests.
+- `upstream/test_base45.py`: 12 tests using the 45-character alphabet `b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"`.
 
 No test selection, custom xfail, deletion, or mutation is allowed.
