@@ -1,5 +1,5 @@
 # Third-Party Notices
 
-This project derives its compatibility contract and fallback implementation from `rfc3339-validator` by Nicolas Aimetti, version 0.1.4, under the MIT License. The original `LICENSE`, author metadata, frozen source and unmodified tests are retained.
+This project derives its compatibility contract and fallback implementation from `base58` by David Keijser, version 2.1.1, under the MIT License. The original `COPYING`, author metadata, frozen source and unmodified tests are retained.
 
-Runtime dependency `six` is distributed separately under its own license. Test-only dependency `strict-rfc3339` is used as required by the frozen upstream suite and is not bundled into release wheels.
+This project has no runtime dependencies beyond the Python standard library. Test-only dependency `PyHamcrest` is used as required by the frozen upstream suite and is not bundled into release wheels.

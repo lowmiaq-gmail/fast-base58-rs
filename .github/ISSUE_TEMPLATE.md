@@ -1,4 +1,4 @@
-* rfc3339-validator version:
+* fast-base58-rs version:
 * Python version:
 * Operating System:
 
