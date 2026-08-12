@@ -59,6 +59,15 @@ fn build_decode_map(alphabet: &[u8], autofix: bool) -> HashMap<u8, u8> {
 // ── core encode / decode (carry-based, no big-int dependency) ──────
 
 fn base58_encode_bytes(input: &[u8], alphabet: &[u8]) -> Vec<u8> {
+    if let Ok(alphabet_array) = <&[u8; 58]>::try_from(alphabet) {
+        if let Ok(prepared) = bs58::Alphabet::new(alphabet_array) {
+            return bs58::encode(input)
+                .with_alphabet(&prepared)
+                .into_string()
+                .into_bytes();
+        }
+    }
+
     let base = alphabet.len() as u32;
     let zeros = input.iter().take_while(|&&b| b == 0).count();
 
@@ -85,6 +94,16 @@ fn base58_encode_bytes(input: &[u8], alphabet: &[u8]) -> Vec<u8> {
 }
 
 fn base58_decode_to_bytes(input: &[u8], alphabet: &[u8], decode_map: &HashMap<u8, u8>) -> Vec<u8> {
+    if input.iter().all(|ch| alphabet.contains(ch)) {
+        if let Ok(alphabet_array) = <&[u8; 58]>::try_from(alphabet) {
+            if let Ok(prepared) = bs58::Alphabet::new(alphabet_array) {
+                if let Ok(decoded) = bs58::decode(input).with_alphabet(&prepared).into_vec() {
+                    return decoded;
+                }
+            }
+        }
+    }
+
     let leading_char = alphabet[0];
     let zeros = input.iter().take_while(|&&b| b == leading_char).count();
     let base = alphabet.len() as u32;
@@ -159,6 +178,14 @@ fn alphabet_from_py(_py: Python, obj: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
     Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
         "alphabet must be bytes",
     ))
+}
+
+fn invalid_character_error(py: Python<'_>, ch: u8) -> PyResult<PyErr> {
+    let value = (ch as char).to_string();
+    let representation = PyString::new(py, &value).repr()?.to_string();
+    Ok(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+        "Invalid character {representation}"
+    )))
 }
 
 // ── PyO3-exposed functions ─────────────────────────────────────────
@@ -278,12 +305,7 @@ fn py_b58decode_int<'py>(
     // validate characters
     for &ch in &bytes_val {
         if !decode_map.contains_key(&ch) {
-            // Format: ValueError("Invalid character {!r}".format(chr(ch)))
-            let chr_repr = format!("{:?}", ch as char);
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "Invalid character {}",
-                chr_repr
-            )));
+            return Err(invalid_character_error(py, ch)?);
         }
     }
 
@@ -332,11 +354,7 @@ fn py_b58decode<'py>(
     // validate characters
     for &ch in &stripped {
         if !decode_map.contains_key(&ch) {
-            let chr_repr = format!("{:?}", ch as char);
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "Invalid character {}",
-                chr_repr
-            )));
+            return Err(invalid_character_error(py, ch)?);
         }
     }
 
@@ -442,11 +460,7 @@ fn py_b58decode_check<'py>(
     // validate
     for &ch in &stripped {
         if !decode_map.contains_key(&ch) {
-            let chr_repr = format!("{:?}", ch as char);
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-                "Invalid character {}",
-                chr_repr
-            )));
+            return Err(invalid_character_error(py, ch)?);
         }
     }
 

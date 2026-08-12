@@ -23,5 +23,6 @@ cannot prove that range, release is blocked.
 - The pipeline production protocol and release-gate structure proven by `fast-dotenv-rs` and `fast-rfc3339-validator-rs`.
 
 No performance or compatibility claim is inherited from a generic Rust crate.
-The `bs58` Rust crate is not used; arbitrary-byte-alphabet support and the full upstream
-contract require a bespoke implementation.
+The mature `bs58` crate is reused only for validated 58-character native fast paths;
+the compatibility wrapper and generic-base implementation preserve arbitrary byte
+alphabets, dynamic Python semantics, cache behavior, checksum APIs, and the CLI.

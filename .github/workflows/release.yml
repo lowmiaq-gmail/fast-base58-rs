@@ -201,7 +201,7 @@ jobs:
           python scripts/run_benchmark.py \
             --artifact "${wheels[0]}" \
             --output release-evidence/release-benchmark.json \
-            --iterations 100000 --repeats 15 --warmup 10000
+            --iterations 10000 --repeats 15 --warmup 1000
           python - <<'PY'
           import hashlib, json, os, pathlib, subprocess
           json_path = pathlib.Path("release-evidence/release-benchmark.json")

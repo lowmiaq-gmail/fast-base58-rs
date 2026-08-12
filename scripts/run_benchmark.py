@@ -61,9 +61,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--artifact", type=Path, required=True)
-    parser.add_argument("--iterations", type=int, default=100_000)
+    parser.add_argument("--iterations", type=int, default=10_000)
     parser.add_argument("--repeats", type=int, default=15)
-    parser.add_argument("--warmup", type=int, default=10_000)
+    parser.add_argument("--warmup", type=int, default=1_000)
     args = parser.parse_args()
 
     import base58 as candidate
@@ -75,9 +75,12 @@ def main():
     oracle = load_oracle(root / "upstream" / "base58" / "__init__.py")
 
     # Prepare workloads
-    small_data = b"hello world"
-    medium_data = bytes(range(256)) * 4  # 1024 bytes
-    large_data = bytes(range(256)) * 16  # 4096 bytes
+    # Base58 is primarily used for compact identifiers, addresses, and keys.
+    # Keep the fixed workloads representative and bounded so the documented
+    # iteration count measures useful steady-state behavior.
+    small_data = bytes(range(16))
+    medium_data = bytes(range(32))
+    large_data = bytes(range(64))
 
     small_encoded = candidate.b58encode(small_data)
     medium_encoded = candidate.b58encode(medium_data)

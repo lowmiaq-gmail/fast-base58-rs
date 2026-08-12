@@ -21,6 +21,17 @@ def generate_cases():
     cases.append({"kind": "const", "name": "RIPPLE_ALPHABET"})
     cases.append({"kind": "const", "name": "__version__"})
     cases.append({"kind": "const", "name": "alphabet"})
+    for name in (
+        "scrub_input",
+        "b58encode_int",
+        "b58encode",
+        "_get_base58_decode_map",
+        "b58decode_int",
+        "b58decode",
+        "b58encode_check",
+        "b58decode_check",
+    ):
+        cases.append({"kind": "metadata", "name": name})
 
     # Known test vectors
     known = [
@@ -44,6 +55,17 @@ def generate_cases():
         ("scrub_input", ["hello"], {}),
         ("scrub_input", [b"hello"], {}),
         ("scrub_input", ["caf\xe9"], {}),  # non-ASCII should raise
+        ("scrub_input", [None], {}),
+        ("scrub_input", [1], {}),
+        ("scrub_input", [bytearray(b"1")], {}),
+        ("scrub_input", [memoryview(b"1")], {}),
+        ("b58encode", [None], {}),
+        ("b58encode", [bytearray(b"1")], {}),
+        ("b58decode_int", [None], {}),
+        ("b58decode_int", [bytearray(b"1")], {}),
+        ("b58decode", [None], {}),
+        ("b58decode", [bytearray(b"1")], {}),
+        ("b58decode_int", [b"\x08"], {}),
     ]
 
     for func, args_list, kwargs in known:
@@ -52,14 +74,20 @@ def generate_cases():
             "function": func,
             "args": [
                 {"kind": "bytes", "value": list(a)} if isinstance(a, bytes)
+                else {"kind": "bytearray", "value": list(a)} if isinstance(a, bytearray)
+                else {"kind": "memoryview", "value": list(a)} if isinstance(a, memoryview)
                 else {"kind": "str", "value": a} if isinstance(a, str)
+                else {"kind": "none", "value": None} if a is None
                 else {"kind": "int", "value": a}
                 for a in args_list
             ],
             "kwargs": {
                 k: (
                     {"kind": "bytes", "value": list(v)} if isinstance(v, bytes)
+                    else {"kind": "bytearray", "value": list(v)} if isinstance(v, bytearray)
+                    else {"kind": "memoryview", "value": list(v)} if isinstance(v, memoryview)
                     else {"kind": "str", "value": v} if isinstance(v, str)
+                    else {"kind": "none", "value": None} if v is None
                     else {"kind": "int", "value": v} if isinstance(v, int)
                     else v
                 )

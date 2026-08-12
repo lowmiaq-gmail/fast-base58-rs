@@ -29,7 +29,7 @@ All artifacts are collected, audited, and published as one immutable set.
 | `__version__` | required | required | `'2.1.1'` |
 | CLI / module entry | required | required | `base58` console script, `python -m base58` |
 | Invalid characters | required | required | ValueError with exact `{!r}` format message |
-| Whitespace rules | required | required | rstrip when space not in alphabet |
+| Whitespace rules | required | required | `b58decode` always rstrips; `b58decode_int` rstrips only when space is absent from alphabet |
 | Performance | measured only after parity | no speed claim | isolated benchmark, never a compatibility substitute |
 
 ## Required local commands

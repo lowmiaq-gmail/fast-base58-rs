@@ -60,8 +60,8 @@ Frozen local files:
 - `b58encode(b'')` → `b''`. Leading null bytes become leading alphabet[0] characters.
 - `b58encode(b'\x00\x00hello world')` → `b'11StV1DL6CwTryKyV'`.
 - `b58decode('')` → `b''` (empty input after rstrip); `b58decode('1')` → `b'\x00'`.
-- `b58decode` whitespace handling: if `b' '` is NOT in alphabet, `v.rstrip()` strips trailing whitespace before decode. If `b' '` IS in alphabet (e.g. BASE45), no stripping occurs.
-- `b58decode_int` whitespace: same rstrip rule; then decode (no leading-char stripping — that's only in b58decode).
+- `b58decode` whitespace handling: `v.rstrip()` always strips trailing whitespace before decode, including when the alphabet itself contains a space.
+- `b58decode_int` whitespace: `v.rstrip()` is conditional on `b' '` not being present in the alphabet; then decode (no leading-char stripping — that's only in `b58decode`).
 - `b58decode_int` raises `ValueError("Invalid character {!r}".format(chr(byte)))` for bytes not in decode map. The `{!r}` produces `repr(chr(byte))` — e.g. `"Invalid character '\\\\x08'"` for backspace, `"Invalid character '0'"` for `'0'` not in bitcoin alphabet.
 - `autofix=True`: groups `[b'0Oo']` and `[b'Il1']` — if exactly one character in a group appears in the alphabet, all group members map to its index.
 - `_get_base58_decode_map` is decorated with `@lru_cache()` (maxsize=128, typed=False).

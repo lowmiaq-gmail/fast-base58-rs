@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import importlib.util
+import inspect
 import json
 from pathlib import Path
 
@@ -22,6 +23,10 @@ def decode_value(case):
     if kind == "bytes":
         # value is list of ints
         return bytes(value)
+    if kind == "bytearray":
+        return bytearray(value)
+    if kind == "memoryview":
+        return memoryview(bytes(value))
     if kind == "none":
         return None
     if kind == "int":
@@ -32,11 +37,11 @@ def decode_value(case):
 def observe(func, *args, **kwargs):
     try:
         result = func(*args, **kwargs)
-        if isinstance(result, bytes):
+        if isinstance(result, (bytes, bytearray, memoryview)):
             return {
                 "outcome": "return",
-                "type": "bytes",
-                "value": list(result),
+                "type": type(result).__name__,
+                "value": list(bytes(result)),
             }
         return {
             "outcome": "return",
@@ -56,6 +61,20 @@ def observe_const(module, name):
     if isinstance(value, bytes):
         return {"outcome": "return", "type": "bytes", "value": list(value)}
     return {"outcome": "return", "type": type(value).__name__, "value": value}
+
+
+def observe_metadata(module, name):
+    value = getattr(module, name)
+    return {
+        "outcome": "return",
+        "signature": str(inspect.signature(value)),
+        "doc": value.__doc__,
+        "annotations": repr(getattr(value, "__annotations__", None)),
+        "defaults": repr(getattr(value, "__defaults__", None)),
+        "kwdefaults": repr(getattr(value, "__kwdefaults__", None)),
+        "name": value.__name__,
+        "qualname": value.__qualname__,
+    }
 
 
 FUNCTIONS = [
@@ -96,6 +115,8 @@ def main():
                 records.append(observe(func, *args_list, **kwargs))
             elif case["kind"] == "const":
                 records.append(observe_const(module, case["name"]))
+            elif case["kind"] == "metadata":
+                records.append(observe_metadata(module, case["name"]))
     args.output.write_text(
         "\n".join(json.dumps(item, sort_keys=True) for item in records) + "\n",
         encoding="utf-8",

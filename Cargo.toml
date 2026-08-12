@@ -15,6 +15,7 @@ name = "_native"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+bs58 = "0.5"
 pyo3 = { version = "0.24", features = ["extension-module", "abi3-py38"] }
 sha2 = "0.10"
 
