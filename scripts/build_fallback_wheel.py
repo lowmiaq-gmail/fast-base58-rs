@@ -80,7 +80,7 @@ def canonical_fallback_pyproject() -> str:
             project_metadata,
             "",
             "[tool.setuptools]",
-            'py-modules = ["rfc3339_validator"]',
+            'packages = ["base58"]',
             "",
         )
     )
@@ -93,19 +93,26 @@ def main() -> int:
     output = args.out_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix="fast-rfc3339-fallback-build-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="fast-base58-fallback-build-") as tmp:
         staging = Path(tmp)
         (staging / "pyproject.toml").write_text(
             canonical_fallback_pyproject(), encoding="utf-8"
         )
         (staging / "setup.cfg").write_text(
-            "[bdist_wheel]\nuniversal = 1\n", encoding="utf-8"
+            "[bdist_wheel]\nuniversal = 0\n", encoding="utf-8"
         )
         for relative in ("README.md", "LICENSE"):
             shutil.copy2(ROOT / relative, staging / relative)
+        # Create package structure
+        pkg_dir = staging / "base58"
+        pkg_dir.mkdir()
         shutil.copy2(
-            ROOT / "fallback" / "rfc3339_validator.py",
-            staging / "rfc3339_validator.py",
+            ROOT / "fallback" / "base58.py",
+            pkg_dir / "__init__.py",
+        )
+        shutil.copy2(
+            ROOT / "fallback" / "__main__.py",
+            pkg_dir / "__main__.py",
         )
         subprocess.run(
             [
@@ -121,9 +128,9 @@ def main() -> int:
             check=True,
         )
 
-    wheels = sorted(output.glob("*-py2.py3-none-any.whl"))
+    wheels = sorted(output.glob("*-py3-none-any.whl"))
     if len(wheels) != 1:
-        raise SystemExit("expected one universal fallback wheel, found: {}".format(wheels))
+        raise SystemExit("expected one fallback wheel, found: {}".format(wheels))
     normalize_static_metadata(wheels[0])
     print(wheels[0])
     return 0

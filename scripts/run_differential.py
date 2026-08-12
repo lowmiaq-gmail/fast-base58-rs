@@ -14,51 +14,115 @@ CASE_COUNT = 10_000
 
 def generate_cases():
     rng = random.Random(SEED)
-    cases = [
-        {"kind": "none"},
-        {"kind": "int", "value": 1},
-        {"kind": "bytes", "value": "2020-01-01T00:00:00Z"},
-        {"kind": "str", "value": ""},
-        {"kind": "str", "value": "0000-01-01T00:00:00Z"},
-        {"kind": "str", "value": "2020-01-01T00:00:00Z\n"},
-    ]
-    while len(cases) < CASE_COUNT // 2:
-        year = rng.randrange(0, 10_000)
-        month = rng.randrange(0, 15)
-        day = rng.randrange(0, 35)
-        hour = rng.randrange(0, 27)
-        minute = rng.randrange(0, 65)
-        second = rng.randrange(0, 65)
-        fraction = "" if rng.randrange(3) == 0 else "." + "".join(
-            str(rng.randrange(10)) for _ in range(rng.randrange(0, 12))
-        )
-        if rng.randrange(2):
-            zone = "Z"
-        else:
-            zone = "%s%02d:%02d" % (
-                rng.choice("+-"),
-                rng.randrange(0, 27),
-                rng.randrange(0, 65),
-            )
-        value = "%04d-%02d-%02dT%02d:%02d:%02d%s%s" % (
-            year,
-            month,
-            day,
-            hour,
-            minute,
-            second,
-            fraction,
-            zone,
-        )
-        if rng.randrange(20) == 0:
-            value += "\n"
-        cases.append({"kind": "str", "value": value})
+    cases = []
 
-    alphabet = "0123456789-T:.+Zzt /_\n\r\x00٠２０"
+    # Constants
+    cases.append({"kind": "const", "name": "BITCOIN_ALPHABET"})
+    cases.append({"kind": "const", "name": "RIPPLE_ALPHABET"})
+    cases.append({"kind": "const", "name": "__version__"})
+    cases.append({"kind": "const", "name": "alphabet"})
+
+    # Known test vectors
+    known = [
+        # (func, args, kwargs)
+        ("b58encode", [b"hello world"], {}),
+        ("b58encode", [b"\x00\x00hello world"], {}),
+        ("b58encode", [b""], {}),
+        ("b58decode", ["StV1DL6CwTryKyV"], {}),
+        ("b58decode", [b"StV1DL6CwTryKyV"], {}),
+        ("b58decode", ["11StV1DL6CwTryKyV"], {}),
+        ("b58decode", ["1"], {}),
+        ("b58decode", [b"1"], {}),
+        ("b58encode_check", ["hello world"], {}),
+        ("b58decode_check", ["3vQB7B6MrGQZaxCuFg4oh"], {}),
+        ("b58decode_check", ["3vQB7B6MrGQZaxCuFg4oH"], {}),
+        ("b58encode_int", [0], {}),
+        ("b58encode_int", [0], {"default_one": False}),
+        ("b58encode_int", [1], {}),
+        ("b58decode_int", ["1"], {}),
+        ("b58decode_int", ["2"], {}),
+        ("scrub_input", ["hello"], {}),
+        ("scrub_input", [b"hello"], {}),
+        ("scrub_input", ["caf\xe9"], {}),  # non-ASCII should raise
+    ]
+
+    for func, args_list, kwargs in known:
+        cases.append({
+            "kind": "call",
+            "function": func,
+            "args": [
+                {"kind": "bytes", "value": list(a)} if isinstance(a, bytes)
+                else {"kind": "str", "value": a} if isinstance(a, str)
+                else {"kind": "int", "value": a}
+                for a in args_list
+            ],
+            "kwargs": {
+                k: (
+                    {"kind": "bytes", "value": list(v)} if isinstance(v, bytes)
+                    else {"kind": "str", "value": v} if isinstance(v, str)
+                    else {"kind": "int", "value": v} if isinstance(v, int)
+                    else v
+                )
+                for k, v in kwargs.items()
+            },
+        })
+
+    # Alphabet cases
+    alphabets = [
+        list(b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"),
+        list(b"rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz"),
+        list(b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:"),
+    ]
+
+    # Generate random encode/decode round-trips
+    while len(cases) < CASE_COUNT // 2:
+        length = rng.randrange(0, 64)
+        data = bytes(rng.randrange(256) for _ in range(length))
+        alpha_idx = rng.randrange(len(alphabets))
+        alpha = alphabets[alpha_idx]
+
+        # encode
+        cases.append({
+            "kind": "call",
+            "function": "b58encode",
+            "args": [{"kind": "bytes", "value": list(data)}],
+            "kwargs": {"alphabet": {"kind": "bytes", "value": alpha}},
+        })
+
+        # encode_check
+        cases.append({
+            "kind": "call",
+            "function": "b58encode_check",
+            "args": [{"kind": "bytes", "value": list(data)}],
+            "kwargs": {"alphabet": {"kind": "bytes", "value": alpha}},
+        })
+
+    # Random decode attempts (valid and invalid)
     while len(cases) < CASE_COUNT:
-        value = "".join(rng.choice(alphabet) for _ in range(rng.randrange(0, 48)))
-        cases.append({"kind": "str", "value": value})
-    return cases
+        length = rng.randrange(0, 40)
+        alpha_idx = rng.randrange(len(alphabets))
+        alpha = alphabets[alpha_idx]
+        # generate random base58-like strings
+        value = bytes(
+            rng.choice(alpha)
+            for _ in range(length)
+        )
+        cases.append({
+            "kind": "call",
+            "function": "b58decode",
+            "args": [{"kind": "bytes", "value": list(value)}],
+            "kwargs": {"alphabet": {"kind": "bytes", "value": alpha}},
+        })
+
+        # b58decode_int
+        cases.append({
+            "kind": "call",
+            "function": "b58decode_int",
+            "args": [{"kind": "bytes", "value": list(value)}],
+            "kwargs": {"alphabet": {"kind": "bytes", "value": alpha}},
+        })
+
+    return cases[:CASE_COUNT]
 
 
 def run_probe(python, corpus, output, oracle=None):
@@ -81,7 +145,7 @@ def main():
     parser.add_argument("--candidate-python", type=Path, required=True)
     args = parser.parse_args()
 
-    with tempfile.TemporaryDirectory(prefix="fast-rfc3339-diff-") as directory:
+    with tempfile.TemporaryDirectory(prefix="fast-base58-diff-") as directory:
         temporary = Path(directory)
         corpus = temporary / "corpus.jsonl"
         oracle_output = temporary / "oracle.jsonl"
@@ -95,19 +159,24 @@ def main():
             args.oracle_python,
             corpus,
             oracle_output,
-            ROOT / "upstream" / "oracle" / "rfc3339_validator.py",
+            ROOT / "upstream" / "base58" / "__init__.py",
         )
         run_probe(args.candidate_python, corpus, candidate_output)
         oracle_lines = oracle_output.read_text(encoding="utf-8").splitlines()
         candidate_lines = candidate_output.read_text(encoding="utf-8").splitlines()
         if oracle_lines != candidate_lines:
-            for index, (oracle, candidate) in enumerate(zip(oracle_lines, candidate_lines)):
-                if oracle != candidate:
+            for index, (oracle_line, candidate_line) in enumerate(
+                zip(oracle_lines, candidate_lines)
+            ):
+                if oracle_line != candidate_line:
                     raise AssertionError(
-                        "differential mismatch at case %d: oracle=%s candidate=%s"
-                        % (index, oracle, candidate)
+                        "differential mismatch at case %d:\n  oracle=%s\n  candidate=%s"
+                        % (index, oracle_line, candidate_line)
                     )
-            raise AssertionError("differential output cardinality mismatch")
+            raise AssertionError(
+                "differential output cardinality mismatch: oracle=%d candidate=%d"
+                % (len(oracle_lines), len(candidate_lines))
+            )
         print("differential: PASS seed=%d cases=%d" % (SEED, len(cases)))
 
 

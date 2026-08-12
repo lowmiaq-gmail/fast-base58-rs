@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def load_oracle(path):
-    spec = importlib.util.spec_from_file_location("frozen_rfc3339_oracle", path)
+    spec = importlib.util.spec_from_file_location("frozen_base58_oracle", path)
     if spec is None or spec.loader is None:
         raise RuntimeError("cannot load frozen oracle")
     module = importlib.util.module_from_spec(spec)
@@ -19,15 +19,29 @@ def load_oracle(path):
     return module
 
 
-def samples(function, values, iterations, repeats, warmup):
+def samples_encode(func, values, iterations, repeats, warmup):
     for _ in range(warmup):
         for value in values:
-            function(value)
+            func(value)
     output = []
     for _ in range(repeats):
         start = time.perf_counter_ns()
         for index in range(iterations):
-            function(values[index % len(values)])
+            func(values[index % len(values)])
+        elapsed = time.perf_counter_ns() - start
+        output.append(elapsed / iterations)
+    return output
+
+
+def samples_decode(func, values, iterations, repeats, warmup, **kwargs):
+    for _ in range(warmup):
+        for value in values:
+            func(value, **kwargs)
+    output = []
+    for _ in range(repeats):
+        start = time.perf_counter_ns()
+        for index in range(iterations):
+            func(values[index % len(values)], **kwargs)
         elapsed = time.perf_counter_ns() - start
         output.append(elapsed / iterations)
     return output
@@ -52,23 +66,32 @@ def main():
     parser.add_argument("--warmup", type=int, default=10_000)
     args = parser.parse_args()
 
-    import rfc3339_validator as candidate
+    import base58 as candidate
 
     artifact = args.artifact.resolve()
     artifact_sha256 = hashlib.sha256(artifact.read_bytes()).hexdigest()
 
     root = Path(__file__).resolve().parents[1]
-    oracle = load_oracle(root / "upstream" / "oracle" / "rfc3339_validator.py")
+    oracle = load_oracle(root / "upstream" / "base58" / "__init__.py")
+
+    # Prepare workloads
+    small_data = b"hello world"
+    medium_data = bytes(range(256)) * 4  # 1024 bytes
+    large_data = bytes(range(256)) * 16  # 4096 bytes
+
+    small_encoded = candidate.b58encode(small_data)
+    medium_encoded = candidate.b58encode(medium_data)
+    large_encoded = candidate.b58encode(large_data)
+
     workloads = {
-        "valid_z": ["2020-02-29T23:59:59.123456Z"],
-        "valid_offset": ["2024-01-31T08:09:10+23:59"],
-        "mixed": [
-            "2020-02-29T23:59:59Z",
-            "2019-02-29T00:00:00Z",
-            "2020-01-01t00:00:00z",
-            "2020-01-01T00:00:00.123+08:00",
-        ],
+        "encode_small": ("encode", [small_data], {}),
+        "encode_medium": ("encode", [medium_data], {}),
+        "encode_large": ("encode", [large_data], {}),
+        "decode_small": ("decode", [small_encoded], {}),
+        "decode_medium": ("decode", [medium_encoded], {}),
+        "decode_large": ("decode", [large_encoded], {}),
     }
+
     result = {
         "python": sys.version,
         "platform": platform.platform(),
@@ -81,22 +104,42 @@ def main():
         "warmup": args.warmup,
         "workloads": {},
     }
-    for name, values in workloads.items():
-        oracle_raw = samples(
-            oracle.validate_rfc3339, values, args.iterations, args.repeats, args.warmup
-        )
-        candidate_raw = samples(
-            candidate.validate_rfc3339, values, args.iterations, args.repeats, args.warmup
-        )
+
+    for name, (op, values, kwargs) in workloads.items():
+        if op == "encode":
+            oracle_raw = samples_encode(
+                oracle.b58encode, values,
+                args.iterations, args.repeats, args.warmup
+            )
+            candidate_raw = samples_encode(
+                candidate.b58encode, values,
+                args.iterations, args.repeats, args.warmup
+            )
+        else:
+            oracle_raw = samples_decode(
+                oracle.b58decode, values,
+                args.iterations, args.repeats, args.warmup
+            )
+            candidate_raw = samples_decode(
+                candidate.b58decode, values,
+                args.iterations, args.repeats, args.warmup
+            )
+
         oracle_summary = summarize(oracle_raw)
         candidate_summary = summarize(candidate_raw)
+        speedup = (
+            oracle_summary["median_ns_per_call"]
+            / candidate_summary["median_ns_per_call"]
+            if candidate_summary["median_ns_per_call"] > 0
+            else float("inf")
+        )
         result["workloads"][name] = {
-            "input": values,
+            "input_sizes": [len(v) for v in values],
             "oracle": oracle_summary,
             "candidate": candidate_summary,
-            "median_speedup": oracle_summary["median_ns_per_call"]
-            / candidate_summary["median_ns_per_call"],
+            "median_speedup": speedup,
         }
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2))
