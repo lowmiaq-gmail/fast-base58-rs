@@ -22,10 +22,10 @@ jobs:
         run: |
           python - <<'PY'
           import json, subprocess, urllib.request
-          release = json.loads(subprocess.check_output(["gh","api","repos/lowmiaq-gmail/fast-rfc3339-validator-rs/releases/latest"]))
+          release = json.loads(subprocess.check_output(["gh","api","repos/lowmiaq-gmail/fast-base58-rs/releases/latest"]))
           assert not release["draft"] and not release["prerelease"]
           assert release["tag_name"] == "v0.1.0"
-          with urllib.request.urlopen("https://pypi.org/pypi/fast-rfc3339-validator-rs/0.1.0/json") as response:
+          with urllib.request.urlopen("https://pypi.org/pypi/fast-base58-rs/0.1.0/json") as response:
               pypi = json.load(response)
           assert len(pypi["urls"]) == 7, [item["filename"] for item in pypi["urls"]]
           assert len(release["assets"]) == 10, [item["name"] for item in release["assets"]]

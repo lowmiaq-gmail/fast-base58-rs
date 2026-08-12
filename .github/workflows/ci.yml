@@ -31,7 +31,7 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
       - name: Install test and build tools
-        run: python -m pip install --upgrade pip "maturin==1.11.5" "pytest>=8,<9" "hypothesis>=6" "strict-rfc3339==0.7" six
+        run: python -m pip install --upgrade pip "maturin==1.11.5" "pytest>=8,<9" "PyHamcrest>=2.0.2" "pytest-benchmark"
       - name: Rust gates
         run: |
           cargo fmt --all -- --check
@@ -52,7 +52,6 @@ jobs:
         shell: bash
         run: |
           python -m venv oracle-venv
-          oracle-venv/bin/python -m pip install six || oracle-venv/Scripts/python -m pip install six
           oracle_python=oracle-venv/bin/python
           if [ ! -x "$oracle_python" ]; then oracle_python=oracle-venv/Scripts/python; fi
           python scripts/run_differential.py --oracle-python "$oracle_python" --candidate-python "$(python -c 'import sys; print(sys.executable)')"
@@ -69,11 +68,11 @@ jobs:
         run: |
           python -m pip install "setuptools>=77" wheel build
           python scripts/build_fallback_wheel.py --out-dir dist
-          python -c "import glob, zipfile; wheel=glob.glob('dist/*-py2.py3-none-any.whl'); assert len(wheel)==1; z=zipfile.ZipFile(wheel[0]); metadata=z.read(next(n for n in z.namelist() if n.endswith('.dist-info/METADATA'))); assert b'Dynamic:' not in metadata"
+          python -c "import glob, zipfile; wheel=glob.glob('dist/*-py3-none-any.whl'); assert len(wheel)==1; z=zipfile.ZipFile(wheel[0]); metadata=z.read(next(n for n in z.namelist() if n.endswith('.dist-info/METADATA'))); assert b'Dynamic:' not in metadata"
       - uses: actions/upload-artifact@v7
         with:
           name: ci-universal-fallback-wheel
-          path: dist/*-py2.py3-none-any.whl
+          path: dist/*-py3-none-any.whl
           if-no-files-found: error
 
   fallback-python3:
@@ -86,8 +85,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - {python: "3.5", image: "3.5.10-buster"}
-          - {python: "3.6", image: "3.6.15-buster"}
           - {python: "3.7", image: "3.7.17-buster"}
     steps:
       - uses: actions/checkout@v4
@@ -97,38 +94,15 @@ jobs:
           path: dist
       - name: Install the prebuilt universal fallback
         run: |
-          python -m pip install "pip<21" "six==1.16.0" "pytest==4.6.11" "hypothesis==4.57.1" "strict-rfc3339==0.7"
-          python -m pip install --force-reinstall --no-deps dist/*-py2.py3-none-any.whl
+          python -m pip install "pip<24" "pytest==4.6.11" "PyHamcrest>=2.0.2"
+          python -m pip install --force-reinstall --no-deps dist/*-py3-none-any.whl
       - name: Verify fallback ownership and semantics
-        run: python -c "import rfc3339_validator as m; assert m.__file__.endswith('.py'), m.__file__; assert m.validate_rfc3339('2020-02-29T23:59:59Z')"
+        run: python -c "import base58 as m; assert m.__file__.endswith('.py'), m.__file__; assert m.b58encode(b'hello world') == b'StV1DL6CwTryKyV'"
       - name: Complete frozen upstream suite
         shell: bash
         run: PYTHON=python bash scripts/run_upstream_full.sh
       - name: Isolated 10,000-case differential
-        if: matrix.python == '3.7'
         shell: bash
         run: |
           python -m venv oracle-venv
-          oracle-venv/bin/python -m pip install six
           python scripts/run_differential.py --oracle-python oracle-venv/bin/python --candidate-python "$(python -c 'import sys; print(sys.executable)')"
-
-  fallback-python2:
-    name: Fallback / Python 2.7
-    needs: fallback-wheel
-    runs-on: ubuntu-22.04
-    container: python:2.7.18-buster
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: ci-universal-fallback-wheel
-          path: dist
-      - name: Install and verify the prebuilt universal fallback
-        shell: bash
-        run: |
-          python -m pip install "pip<21" "setuptools<45" "wheel<0.38" "six==1.16.0" "pytest==4.6.11" "hypothesis==4.57.1" "strict-rfc3339==0.7"
-          python -m pip install --force-reinstall --no-deps dist/*-py2.py3-none-any.whl
-          cd /tmp
-          python -c "import rfc3339_validator as m; assert m.__file__.endswith(('.py', '.pyc')); assert m.validate_rfc3339('2020-02-29T23:59:59Z')"
-          cd "$GITHUB_WORKSPACE"
-          python -m pytest -q upstream/tests/test_rfc3339_validator.py
