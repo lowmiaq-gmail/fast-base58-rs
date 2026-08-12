@@ -40,7 +40,7 @@ python scripts/run_differential.py \
 PYTHON=/path/to/candidate-venv/bin/python bash scripts/run_upstream_full.sh
 ```
 
-Release counting remains fail-closed until cross-platform packaged wheels, immutable artifacts, PyPI public reinstalls, formal GitHub Release last, and post-release monitoring all pass. See [FULL-RELEASE-REPORT.md](FULL-RELEASE-REPORT.md).
+Release `v0.1.0` passed the cross-platform packaged-wheel matrix, immutable artifact audit, public PyPI reinstall gates, and formal GitHub Release-last gate. See [FULL-RELEASE-REPORT.md](FULL-RELEASE-REPORT.md) and the [formal release](https://github.com/lowmiaq-gmail/fast-base58-rs/releases/tag/v0.1.0).
 
 ## Migration and rollback
 
