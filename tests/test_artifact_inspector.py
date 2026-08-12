@@ -21,7 +21,9 @@ def test_assert_record_accepts_windows_path_separators():
     output = io.StringIO(newline="")
     writer = csv.writer(output, lineterminator="\n")
     for path, payload in files.items():
-        writer.writerow((path.replace("/", "\\"), record_hash(payload), len(payload)))
+        writer.writerow(
+            (path.replace("/", "\\"), record_hash(payload), len(payload))
+        )
     writer.writerow((record_name.replace("/", "\\"), "", ""))
     record = output.getvalue().encode("utf-8")
 
